@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Dumbbell,
+  FolderKanban,
   LayoutDashboard,
   Map,
   Medal,
@@ -13,6 +14,7 @@ import {
   ShoppingBag,
   Sparkles,
   TerminalSquare,
+  Workflow,
   Trophy,
 } from "lucide-react";
 
@@ -42,8 +44,10 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/learn", label: "Learn", icon: Map, primary: true },
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, primary: true },
-  { href: "/practice", label: "Practice", icon: Dumbbell, primary: true },
+  { href: "/projects", label: "Projects", icon: FolderKanban, primary: true },
+  { href: "/practice", label: "Practice", icon: Dumbbell },
   { href: "/playground", label: "Playground", icon: TerminalSquare, primary: true },
+  { href: "/tools/diagram", label: "Diagrams", icon: Workflow },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/achievements", label: "Achievements", icon: Medal, primary: true },
   { href: "/stats", label: "Statistics", icon: BarChart3 },

@@ -51,6 +51,7 @@ export function absoluteUrl(path = "/"): string {
 /** Marketing nav — also feeds the footer sitemap block. */
 export const marketingNav = [
   { title: "Courses", href: "/courses" },
+  { title: "Projects", href: "/projects" },
   { title: "Playground", href: "/playground" },
   { title: "Pricing", href: "/pricing" },
   { title: "Blog", href: "/blog" },
@@ -62,6 +63,7 @@ export const footerNav = [
     title: "Learn",
     links: [
       { title: "All courses", href: "/courses" },
+      { title: "Capstone projects", href: "/projects" },
       { title: "SQL Foundations", href: "/courses/foundations" },
       { title: "Joins & Relationships", href: "/courses/joins" },
       { title: "Aggregation & Grouping", href: "/courses/aggregation" },
@@ -76,6 +78,7 @@ export const footerNav = [
       { title: "SQL glossary", href: "/glossary" },
       { title: "Interview questions", href: "/sql-interview-questions" },
       { title: "Playground", href: "/playground" },
+      { title: "ER diagram editor", href: "/tools/diagram" },
       { title: "Blog", href: "/blog" },
       { title: "RSS feed", href: "/rss.xml" },
     ],

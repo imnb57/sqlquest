@@ -18,6 +18,7 @@
 import { PGlite } from "@electric-sql/pglite";
 import { tracks, allLessons, curriculumStats } from "../src/content/curriculum.js";
 import { tryGetDataset } from "../src/content/datasets.js";
+import { capstones, capstoneStats } from "../src/content/capstones.js";
 import { isMutating, stripLiteralsAndComments } from "../src/lib/sql/statement.js";
 import type { Challenge, QueryChallenge } from "../src/content/types.js";
 
@@ -223,16 +224,87 @@ async function checkQueries() {
   }
 }
 
+/* -------------------------------------------------------------- capstones */
+
+/**
+ * Capstone milestones are graded by the same engine as lesson challenges, so
+ * they get the same gate: the reference solution must execute, satisfy its own
+ * constraints, and return columns.
+ */
+async function checkCapstones() {
+  const ids = new Set<string>();
+
+  for (const capstone of capstones) {
+    const dataset = tryGetDataset(capstone.datasetId);
+    if (!dataset) {
+      fail(capstone.slug, `unknown dataset "${capstone.datasetId}"`);
+      continue;
+    }
+    if (capstone.milestones.length === 0) fail(capstone.slug, "has no milestones");
+
+    const started = Date.now();
+    const db = await PGlite.create();
+    await db.exec(dataset.sql);
+
+    for (const m of capstone.milestones) {
+      const at = `${capstone.slug}#${m.id}`;
+      if (ids.has(m.id)) fail(at, `duplicate milestone id "${m.id}"`);
+      ids.add(m.id);
+
+      if (!m.solution?.trim()) fail(at, "missing solution");
+      if (isMutating(m.solution) && !m.verifyQuery) {
+        fail(at, "mutating solution has no verifyQuery");
+      }
+
+      const cleaned = stripLiteralsAndComments(m.solution);
+      for (const rule of m.grading?.mustUse ?? []) {
+        if (!new RegExp(rule.pattern, "i").test(cleaned))
+          fail(at, `solution violates its own mustUse rule (${rule.label})`);
+      }
+      for (const rule of m.grading?.mustNotUse ?? []) {
+        if (new RegExp(rule.pattern, "i").test(cleaned))
+          fail(at, `solution violates its own mustNotUse rule (${rule.label})`);
+      }
+
+      await db.exec("BEGIN");
+      try {
+        const res = await db.exec(m.solution, { rowMode: "array" });
+        if (m.verifyQuery) {
+          const v = await db.query(m.verifyQuery);
+          if (v.fields.length === 0) fail(at, "verifyQuery returned no columns");
+        } else {
+          const last = res.at(-1);
+          if (!last || last.fields.length === 0) fail(at, "solution returned no columns");
+        }
+      } catch (e) {
+        fail(at, `solution failed: ${(e as Error).message.split("\n")[0]}`);
+      } finally {
+        await db.exec("ROLLBACK").catch(() => undefined);
+      }
+    }
+
+    await db.close().catch(() => undefined);
+    console.log(
+      `${GREEN}  ok${RESET} ${capstone.slug.padEnd(30)} ${String(capstone.milestones.length).padStart(2)} milestones  ${DIM}${Date.now() - started}ms${RESET}`,
+    );
+  }
+}
+
 /* ------------------------------------------------------------------ main */
 
 console.log(`\n${DIM}Verifying curriculum…${RESET}\n`);
 checkStructure();
 await checkQueries();
+console.log();
+await checkCapstones();
 
 console.log(
   `\n  ${curriculumStats.tracks} tracks · ${curriculumStats.units} units · ` +
     `${curriculumStats.lessons} lessons · ${curriculumStats.challenges} challenges · ` +
     `${curriculumStats.totalXp} XP`,
+);
+console.log(
+  `  ${capstoneStats.projects} capstones · ${capstoneStats.milestones} milestones`,
 );
 
 if (warnings.length) {

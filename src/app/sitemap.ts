@@ -4,6 +4,7 @@ import { absoluteUrl } from "@/lib/site";
 import { allLessons, tracks } from "@/content/curriculum";
 import { posts } from "@/content/blog";
 import { glossary, termSlug } from "@/content/glossary";
+import { capstones } from "@/content/capstones";
 
 /**
  * Sitemap.
@@ -26,6 +27,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
       { url: absoluteUrl("/sql-interview-questions"), priority: 0.85, changeFrequency: "monthly" },
       { url: absoluteUrl("/glossary"), priority: 0.8, changeFrequency: "monthly" },
       { url: absoluteUrl("/blog"), priority: 0.8, changeFrequency: "weekly" },
+      { url: absoluteUrl("/projects"), priority: 0.85, changeFrequency: "monthly" },
+      { url: absoluteUrl("/tools/diagram"), priority: 0.85, changeFrequency: "monthly" },
       { url: absoluteUrl("/practice"), priority: 0.7, changeFrequency: "monthly" },
       { url: absoluteUrl("/pricing"), priority: 0.7, changeFrequency: "monthly" },
       { url: absoluteUrl("/about"), priority: 0.6, changeFrequency: "monthly" },
@@ -55,6 +58,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: lesson.kind === "boss" ? 0.7 : 0.65,
   }));
 
+  const capstonePages: MetadataRoute.Sitemap = capstones.map((c) => ({
+    url: absoluteUrl(`/projects/${c.slug}`),
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.75,
+  }));
+
   const blogPages: MetadataRoute.Sitemap = posts.map((post) => ({
     url: absoluteUrl(`/blog/${post.slug}`),
     lastModified: new Date(post.updated ?? post.published),
@@ -73,6 +83,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...staticPages,
     ...trackPages,
     ...lessonPages,
+    ...capstonePages,
     ...blogPages,
     ...glossaryPages,
   ];

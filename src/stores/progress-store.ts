@@ -65,6 +65,15 @@ export interface ChallengeRecord {
   bestMs: number;
 }
 
+export interface CapstoneRecord {
+  /** Milestone ids solved, in completion order. */
+  completed: string[];
+  /** Last accepted submission per milestone, for the deliverables board. */
+  submissions: Record<string, string>;
+  startedAt: string;
+  completedAt?: string;
+}
+
 export interface DayRecord {
   xp: number;
   lessons: number;
@@ -108,6 +117,9 @@ interface ProgressState {
   noHintLessons: number;
   bossesDefeated: number;
   tracksCompleted: string[];
+
+  /** Capstone project progress, keyed by capstone id. */
+  capstones: Record<string, CapstoneRecord>;
 
   /** Consecutive correct answers in the current session; drives combo XP. */
   combo: number;
@@ -172,6 +184,13 @@ interface ProgressActions {
   setDailyGoal: (goal: number) => void;
 
   recordPlaygroundRun: (datasetId: string) => void;
+  completeMilestone: (args: {
+    capstoneId: string;
+    milestoneId: string;
+    submission: string;
+    totalMilestones: number;
+    xp: number;
+  }) => { xpAwarded: number; projectComplete: boolean };
 
   hydrateFromServer: (snapshot: Partial<ProgressState>) => void;
   markSynced: () => void;
@@ -216,6 +235,7 @@ function initialState(): ProgressState {
     noHintLessons: 0,
     bossesDefeated: 0,
     tracksCompleted: [],
+    capstones: {},
     combo: 0,
     lastSyncedAt: null,
   };
@@ -664,6 +684,47 @@ export const useProgressStore = create<ProgressStore>()(
           };
         }),
 
+      completeMilestone: ({ capstoneId, milestoneId, submission, totalMilestones, xp }) => {
+        const state = get();
+        const roll = rolledCounters(state);
+        const today = localDayKey();
+
+        const existing = state.capstones[capstoneId] ?? {
+          completed: [],
+          submissions: {},
+          startedAt: new Date().toISOString(),
+        };
+
+        // Re-solving a milestone is fine, but it doesn't pay twice.
+        const alreadyDone = existing.completed.includes(milestoneId);
+        const completed = alreadyDone
+          ? existing.completed
+          : [...existing.completed, milestoneId];
+        const projectComplete = completed.length >= totalMilestones;
+        const awarded = alreadyDone ? 0 : xp;
+
+        set({
+          ...roll,
+          xp: state.xp + awarded,
+          counters: { ...roll.counters, xpToday: roll.counters.xpToday + awarded },
+          activity: addToDay(state.activity, today, { xp: awarded }),
+          capstones: {
+            ...state.capstones,
+            [capstoneId]: {
+              ...existing,
+              completed,
+              submissions: { ...existing.submissions, [milestoneId]: submission },
+              completedAt:
+                projectComplete && !existing.completedAt
+                  ? new Date().toISOString()
+                  : existing.completedAt,
+            },
+          },
+        });
+
+        return { xpAwarded: awarded, projectComplete };
+      },
+
       hydrateFromServer: (snapshot) =>
         set((state) => ({
           // Local wins on conflict: the learner's device has the freshest data,
@@ -771,5 +832,6 @@ export function serialisableProgress(state: ProgressState) {
     noHintLessons: state.noHintLessons,
     bossesDefeated: state.bossesDefeated,
     tracksCompleted: state.tracksCompleted,
+    capstones: state.capstones,
   };
 }
