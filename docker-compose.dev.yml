@@ -1,0 +1,42 @@
+# Development stack: Postgres only.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run dev
+#
+# Run the app on the host for fast refresh, and let Docker own the database.
+
+name: sqlquest-dev
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: sqlquest
+      POSTGRES_PASSWORD: sqlquest
+      POSTGRES_DB: sqlquest
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-dev-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sqlquest -d sqlquest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Browse and edit the database at http://localhost:8080
+  adminer:
+    image: adminer:5
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      ADMINER_DEFAULT_SERVER: db
+      ADMINER_DESIGN: dracula
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres-dev-data:

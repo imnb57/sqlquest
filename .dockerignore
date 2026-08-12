@@ -1,0 +1,38 @@
+# Build artefacts and local state — never copy these into the image.
+node_modules
+.next
+out
+build
+coverage
+
+# Local environment
+.env
+.env.local
+.env.*.local
+
+# VCS and editors
+.git
+.gitignore
+.github
+.vscode
+.idea
+*.swp
+
+# Docs and tooling that don't affect the build
+README.md
+CONTRIBUTING.md
+LICENSE
+*.log
+npm-debug.log*
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Docker's own files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# Vendored at build time by the prebuild hook — never copy the host copy in.
+public/pglite

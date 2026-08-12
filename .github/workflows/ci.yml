@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Typecheck · Lint · Content · Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # The gate that matters: every reference solution is executed against a
+      # real PostgreSQL (compiled to WASM), so a lesson whose answer doesn't
+      # run — or that contradicts its own constraints — cannot be merged.
+      - name: Verify curriculum
+        run: npm run verify:content
+
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SITE_URL: https://sqlquest.dev
+          AUTH_SECRET: ci-placeholder-secret-not-used-at-runtime
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build image
+        run: docker build -t sqlquest:ci --build-arg NEXT_PUBLIC_SITE_URL=https://sqlquest.dev .
+
+      - name: Boot it and check health
+        run: |
+          docker run -d --name sqlquest-ci -p 3000:3000 \
+            -e AUTH_SECRET=ci-secret sqlquest:ci
+          for i in $(seq 1 30); do
+            if curl -fs http://localhost:3000/api/health > /dev/null; then
+              echo "healthy after ${i}s"
+              curl -s http://localhost:3000/api/health
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::container never became healthy"
+          docker logs sqlquest-ci
+          exit 1
